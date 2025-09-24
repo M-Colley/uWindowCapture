@@ -117,6 +117,7 @@ public class UwcManager : MonoBehaviour
     }
 
     List<int> desktops_ = new List<int>();
+    readonly List<Message> messageBuffer_ = new List<Message>(32);
     static public int desktopCount
     {
         get { return instance.desktops_.Count; }
@@ -192,10 +193,10 @@ public class UwcManager : MonoBehaviour
 
     void UpdateMessages()
     {
-        var messages = Lib.GetMessages();
+        Lib.GetMessages(messageBuffer_);
 
-        for (int i = 0; i < messages.Length; ++i) {
-            var message = messages[i];
+        for (int i = 0; i < messageBuffer_.Count; ++i) {
+            var message = messageBuffer_[i];
             var id = message.windowId;
             switch (message.type) {
                 case MessageType.WindowAdded: {

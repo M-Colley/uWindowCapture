@@ -64,6 +64,14 @@ public class UwcCursor
         if (w == 0 || h == 0) return;
 
         if (!texture || texture.width != w || texture.height != h) {
+            if (texture) {
+                if (Application.isPlaying) {
+                    Object.Destroy(texture);
+                } else {
+                    Object.DestroyImmediate(texture);
+                }
+            }
+
             texture = new Texture2D(w, h, TextureFormat.BGRA32, false);
             texture.filterMode = FilterMode.Point;
             texture.wrapMode = TextureWrapMode.Clamp;
