@@ -68,6 +68,7 @@ public struct Point
 public static class Lib
 {
     public const string name = "uWindowCapture";
+    static readonly int messageSize = Marshal.SizeOf(typeof(Message));
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate void DebugLogDelegate(string str);
@@ -239,7 +240,7 @@ public static class Lib
         if (count == 0) return messages;
 
         var ptr = GetMessages_Internal();
-        var size = Marshal.SizeOf(typeof(Message));
+        var size = messageSize;
 
         for (int i = 0; i < count; ++i) {
             var data = new IntPtr(ptr.ToInt64() + (size * i));
@@ -275,7 +276,7 @@ public static class Lib
 
     public static Color32[] GetWindowPixels(int id, int x, int y, int width, int height)
     {
-        var color = new Color32[width * height];       
+        var color = new Color32[width * height];
         GetWindowPixels(id, color, x, y, width, height);
         return color;
     }
@@ -286,13 +287,16 @@ public static class Lib
             Debug.LogErrorFormat("colors is smaller than (width * height).", id, x, y, width, height);
             return false;
         }
-		var handle = GCHandle.Alloc(colors, GCHandleType.Pinned);
-		var ptr = handle.AddrOfPinnedObject();
-        if (!GetWindowPixels_Internal(id, ptr, x, y, width, height)) {
-            Debug.LogErrorFormat("GetWindowPixels({0}, {1}, {2}, {3}, {4}) failed.", id, x, y, width, height);
-            return false;
+        var handle = GCHandle.Alloc(colors, GCHandleType.Pinned);
+        try {
+            var ptr = handle.AddrOfPinnedObject();
+            if (!GetWindowPixels_Internal(id, ptr, x, y, width, height)) {
+                Debug.LogErrorFormat("GetWindowPixels({0}, {1}, {2}, {3}, {4}) failed.", id, x, y, width, height);
+                return false;
+            }
+        } finally {
+            handle.Free();
         }
-        handle.Free();
         return true;
     }
 }
