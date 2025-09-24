@@ -103,7 +103,7 @@ private:
     static void OutputTime()
     {
         auto t = time(nullptr);
-        tm tm;
+        tm tm{};
         localtime_s(&tm, &t);
         char buf[64];
         strftime(buf, 64, "%F %T", &tm);
