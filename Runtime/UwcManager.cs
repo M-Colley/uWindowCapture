@@ -211,12 +211,13 @@ public class UwcManager : MonoBehaviour
                 case MessageType.WindowRemoved: {
                     var window = Find(id);
                     if (window != null) {
+                        var wasDesktop = window.isDesktop;
                         window.isAlive = false;
                         if (window.parentWindow != null) {
                             window.parentWindow.onChildRemoved.Invoke(window);
                         }
                         windows.Remove(id);
-                        if (window.isAlive && window.isDesktop) {
+                        if (wasDesktop) {
                             desktops_.Remove(id);
                             onDesktopRemoved.Invoke(window);
                         } else {
