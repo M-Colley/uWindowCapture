@@ -414,14 +414,12 @@ void WindowManager::UpdateWindowHandleList()
         OutputApiError(__FUNCTION__, "EnumDisplayMonitors");
     }
 
-    std::sort(
-        windowDataList_[1].begin(), 
-        windowDataList_[1].end(), 
-        [](const auto& a, const auto& b) 
+    std::stable_partition(
+        windowDataList_[1].begin(),
+        windowDataList_[1].end(),
+        [](const auto& data)
         {
-            return 
-                a.hOwner == nullptr &&
-                b.hOwner != nullptr;
+            return data.hOwner == nullptr;
         });
 
     {
