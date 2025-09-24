@@ -56,7 +56,6 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: '22'
           # This URL points to the GitHub Packages registry
           registry-url: 'https://npm.pkg.github.com'
           # Associates the scope of your package (@M-Colley) with the registry
