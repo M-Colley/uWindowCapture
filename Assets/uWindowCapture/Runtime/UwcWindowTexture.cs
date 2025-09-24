@@ -165,6 +165,7 @@ public class UwcWindowTexture : MonoBehaviour
 
             var old = window_;
             window_ = value;
+            hasLastCursorDrawValue_ = false;
             onWindowChanged_.Invoke(window_, old);
 
             if (window_ != null) {
@@ -200,6 +201,11 @@ public class UwcWindowTexture : MonoBehaviour
     Material material_;
     Renderer renderer_;
     MeshFilter meshFilter_;
+    Mesh cachedMesh_;
+    Vector2 cachedMeshSize_;
+    bool hasCachedMeshSize_ = false;
+    bool hasLastCursorDrawValue_ = false;
+    bool lastCursorDrawValue_ = false;
     Collider collider_;
     float captureTimer_ = 0f;
     bool isCaptureRequested_ = false;
@@ -212,7 +218,30 @@ public class UwcWindowTexture : MonoBehaviour
         meshFilter_ = GetComponent<MeshFilter>();
         collider_ = GetComponent<Collider>();
 
+        CacheMeshMetrics();
+
         list_.Add(this);
+    }
+
+    void CacheMeshMetrics()
+    {
+        if (!meshFilter_) {
+            cachedMesh_ = null;
+            cachedMeshSize_ = Vector2.zero;
+            hasCachedMeshSize_ = false;
+            return;
+        }
+
+        var sharedMesh = meshFilter_.sharedMesh;
+        cachedMesh_ = sharedMesh;
+        if (sharedMesh) {
+            var extents = sharedMesh.bounds.extents;
+            cachedMeshSize_ = new Vector2(extents.x * 2f, extents.y * 2f);
+            hasCachedMeshSize_ = true;
+        } else {
+            cachedMeshSize_ = Vector2.zero;
+            hasCachedMeshSize_ = false;
+        }
     }
 
     void OnDestroy()
@@ -227,6 +256,7 @@ public class UwcWindowTexture : MonoBehaviour
 
         if (!isValid) {
             material_.mainTexture = null;
+            hasLastCursorDrawValue_ = false;
             return;
         }
 
@@ -253,7 +283,11 @@ public class UwcWindowTexture : MonoBehaviour
     {
         if (!isValid) return;
 
-        window.cursorDraw = drawCursor;
+        if (!hasLastCursorDrawValue_ || lastCursorDrawValue_ != drawCursor) {
+            window.cursorDraw = drawCursor;
+            lastCursorDrawValue_ = drawCursor;
+            hasLastCursorDrawValue_ = true;
+        }
 
         if (material_.mainTexture != window.texture) {
             material_.mainTexture = window.texture;
@@ -271,25 +305,35 @@ public class UwcWindowTexture : MonoBehaviour
     {
         if (!isValid || (!updateScaleForcely && window.isChild)) return;
 
+        if (meshFilter_ && meshFilter_.sharedMesh != cachedMesh_) {
+            CacheMeshMetrics();
+        }
+
         var scale = transform.localScale;
+        var windowWidth = window.width;
+        var windowHeight = window.height;
 
         switch (scaleControlType) {
             case WindowTextureScaleControlType.BaseScale: {
-                var extents = meshFilter_.sharedMesh.bounds.extents;
-                var meshWidth = extents.x * 2f;
-                var meshHeight = extents.y * 2f;
+                var meshWidth = cachedMeshSize_.x;
+                var meshHeight = cachedMeshSize_.y;
+                if (!hasCachedMeshSize_ && meshFilter_ && meshFilter_.sharedMesh) {
+                    var extents = meshFilter_.sharedMesh.bounds.extents;
+                    meshWidth = extents.x * 2f;
+                    meshHeight = extents.y * 2f;
+                }
                 var baseHeight = meshHeight * basePixel;
                 var baseWidth = meshWidth * basePixel;
-                scale.x = window.width / baseWidth;
-                scale.y = window.height / baseHeight;
+                scale.x = baseWidth != 0f ? windowWidth / baseWidth : 0f;
+                scale.y = baseHeight != 0f ? windowHeight / baseHeight : 0f;
                 break;
             }
             case WindowTextureScaleControlType.FixedWidth: {
-                scale.y = transform.localScale.x * window.height / window.width;
+                scale.y = windowWidth != 0 ? scale.x * windowHeight / windowWidth : 0f;
                 break;
             }
             case WindowTextureScaleControlType.FixedHeight: {
-                scale.x = transform.localScale.y * window.width / window.height;
+                scale.x = windowHeight != 0 ? scale.y * windowWidth / windowHeight : 0f;
                 break;
             }
             case WindowTextureScaleControlType.Manual: {
