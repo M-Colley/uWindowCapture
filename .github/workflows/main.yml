@@ -26,7 +26,7 @@ jobs:
     steps:
       # Step 1: Check out the repository's code
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           # Fetches all history for all branches and tags, necessary for UPM branch creation
           fetch-depth: 0
@@ -54,9 +54,9 @@ jobs:
 
       # Step 4: Set up the Node.js environment for publishing
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '18'
+          node-version: '22'
           # This URL points to the GitHub Packages registry
           registry-url: 'https://npm.pkg.github.com'
           # Associates the scope of your package (@M-Colley) with the registry
