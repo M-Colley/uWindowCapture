@@ -21,6 +21,82 @@
 #pragma comment(lib, "Dwmapi.lib")
 
 
+namespace
+{
+    // Ensure the process is DPI aware so high-resolution (e.g. 4K) desktops are
+    // captured at their native pixel dimensions instead of being scaled down by
+    // Windows DPI virtualization.
+    void EnablePerMonitorDpiAwareness()
+    {
+        static bool hasAttempted = false;
+        if (hasAttempted) return;
+        hasAttempted = true;
+
+        const auto user32 = ::GetModuleHandleW(L"user32.dll");
+        if (user32)
+        {
+            using SetProcessDpiAwarenessContextFunc = BOOL(WINAPI*)(HANDLE);
+            const auto setContext = reinterpret_cast<SetProcessDpiAwarenessContextFunc>(
+                ::GetProcAddress(user32, "SetProcessDpiAwarenessContext"));
+            if (setContext)
+            {
+#ifdef DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
+                const auto perMonitorV2 = DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2;
+#else
+                const auto perMonitorV2 = reinterpret_cast<HANDLE>(static_cast<LONG_PTR>(-4));
+#endif
+                ::SetLastError(0);
+                if (setContext(perMonitorV2) || ::GetLastError() == ERROR_ACCESS_DENIED)
+                {
+                    return;
+                }
+
+#ifdef DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE
+                const auto perMonitor = DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE;
+#else
+                const auto perMonitor = reinterpret_cast<HANDLE>(static_cast<LONG_PTR>(-3));
+#endif
+                ::SetLastError(0);
+                if (setContext(perMonitor) || ::GetLastError() == ERROR_ACCESS_DENIED)
+                {
+                    return;
+                }
+            }
+        }
+
+        const auto shcore = ::LoadLibraryW(L"Shcore.dll");
+        if (shcore)
+        {
+            using SetProcessDpiAwarenessFunc = HRESULT(WINAPI*)(int);
+            const auto setAwareness = reinterpret_cast<SetProcessDpiAwarenessFunc>(
+                ::GetProcAddress(shcore, "SetProcessDpiAwareness"));
+            if (setAwareness)
+            {
+                constexpr int PROCESS_PER_MONITOR_DPI_AWARE = 2;
+                const auto hr = setAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
+                if (SUCCEEDED(hr) || hr == E_ACCESSDENIED)
+                {
+                    ::FreeLibrary(shcore);
+                    return;
+                }
+            }
+            ::FreeLibrary(shcore);
+        }
+
+        if (user32)
+        {
+            using SetProcessDPIAwareFunc = BOOL(WINAPI*)(void);
+            const auto setDpiAware = reinterpret_cast<SetProcessDPIAwareFunc>(
+                ::GetProcAddress(user32, "SetProcessDPIAware"));
+            if (setDpiAware)
+            {
+                setDpiAware();
+            }
+        }
+    }
+}
+
+
 // flag to check if this plugin has initialized.
 bool g_hasInitialized = false;
 
@@ -41,6 +117,8 @@ extern "C"
     {
         if (g_hasInitialized) return;
         g_hasInitialized = true;
+
+        EnablePerMonitorDpiAwareness();
 
         Debug::Initialize();
 
