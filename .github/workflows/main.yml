@@ -60,7 +60,7 @@ jobs:
           # This URL points to the GitHub Packages registry
           registry-url: 'https://npm.pkg.github.com'
           # Associates the scope of your package (@M-Colley) with the registry
-          scope: '@M-Colley'
+          scope: '@@m-colley'
 
       # Step 5: Publish the package to GitHub Packages
       - name: Publish to GitHub Packages
