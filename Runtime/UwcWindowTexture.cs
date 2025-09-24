@@ -214,6 +214,7 @@ public class UwcWindowTexture : MonoBehaviour
     bool isCaptureRequested_ = false;
     bool hasBeenCaptured_ = false;
     float nextTitleRequestTime_ = 0f;
+    bool isWindowValidThisFrame_ = false;
 
     void Awake()
     {
@@ -258,24 +259,26 @@ public class UwcWindowTexture : MonoBehaviour
         UpdateSearchTiming();
         UpdateTargetWindow();
 
-        if (!isValid) {
+        var isWindowValid = window != null && window.isValid;
+        isWindowValidThisFrame_ = isWindowValid;
+        if (!isWindowValid) {
             material_.mainTexture = null;
             hasLastCursorDrawValue_ = false;
             if (searchAnotherWindowWhenInvalid) {
                 shouldUpdateWindow = true;
             }
-            UpdateBasicComponents();
+            UpdateBasicComponents(isWindowValid);
             return;
         }
 
-        UpdateTexture();
+        UpdateTexture(isWindowValid);
         UpdateRenderer();
-        UpdateScale();
-        UpdateTitle();
+        UpdateScale(isWindowValid);
+        UpdateTitle(isWindowValid);
         UpdateCaptureTimer();
-        UpdateRequestCapture();
+        UpdateRequestCapture(isWindowValid);
 
-        UpdateBasicComponents();
+        UpdateBasicComponents(isWindowValid);
     }
 
     void OnWillRenderObject()
@@ -283,13 +286,13 @@ public class UwcWindowTexture : MonoBehaviour
         if (!isCaptureRequested_) return;
 
         if (captureRequestTiming == WindowTextureCaptureTiming.OnlyWhenVisible) {
-            RequestCapture();
+            RequestCaptureInternal(isWindowValidThisFrame_);
         }
     }
 
-    void UpdateTexture()
+    void UpdateTexture(bool isWindowValid)
     {
-        if (!isValid) return;
+        if (!isWindowValid) return;
 
         if (!hasLastCursorDrawValue_ || lastCursorDrawValue_ != drawCursor) {
             window.cursorDraw = drawCursor;
@@ -309,9 +312,9 @@ public class UwcWindowTexture : MonoBehaviour
         }
     }
 
-    void UpdateScale()
+    void UpdateScale(bool isWindowValid)
     {
-        if (!isValid || (!updateScaleForcely && window.isChild)) return;
+        if (!isWindowValid || (!updateScaleForcely && window.isChild)) return;
 
         if (meshFilter_ && meshFilter_.sharedMesh != cachedMesh_) {
             CacheMeshMetrics();
@@ -355,9 +358,9 @@ public class UwcWindowTexture : MonoBehaviour
         transform.localScale = scale;
     }
 
-    void UpdateTitle()
+    void UpdateTitle(bool isWindowValid)
     {
-        if (!updateTitle || !isValid) {
+        if (!updateTitle || !isWindowValid) {
             return;
         }
 
@@ -391,12 +394,12 @@ public class UwcWindowTexture : MonoBehaviour
         isCaptureRequested_ = true;
     }
 
-    void UpdateRequestCapture()
+    void UpdateRequestCapture(bool isWindowValid)
     {
         if (!isCaptureRequested_) return;
 
         if (captureRequestTiming == WindowTextureCaptureTiming.EveryFrame) {
-            RequestCapture();
+            RequestCaptureInternal(isWindowValid);
         }
     }
 
@@ -424,10 +427,10 @@ public class UwcWindowTexture : MonoBehaviour
         }
     }
 
-    void UpdateBasicComponents()
+    void UpdateBasicComponents(bool isWindowValid)
     {
-        if (renderer_) renderer_.enabled = isValid;
-        if (collider_) collider_.enabled = isValid;
+        if (renderer_) renderer_.enabled = isWindowValid;
+        if (collider_) collider_.enabled = isWindowValid;
     }
 
     void OnCaptured()
@@ -442,7 +445,12 @@ public class UwcWindowTexture : MonoBehaviour
 
     public void RequestCapture()
     {
-        if (!isValid) return;
+        RequestCaptureInternal(window != null && window.isValid);
+    }
+
+    void RequestCaptureInternal(bool isWindowValid)
+    {
+        if (!isWindowValid) return;
 
         isCaptureRequested_ = false;
         window.captureMode = captureMode;
