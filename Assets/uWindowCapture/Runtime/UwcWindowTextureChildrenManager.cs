@@ -105,20 +105,26 @@ public class UwcWindowTextureChildrenManager : MonoBehaviour
         var py = parent.y;
         var pw = parent.width;
         var ph = parent.height;
+        var parentZ = parent.zOrder;
+
         var cx = window.x;
         var cy = window.y;
         var cw = window.width;
         var ch = window.height;
+        var childZ = window.zOrder;
+
         var dz = windowTexture_.childWindowZDistance;
         var desktopX = (cw - pw) * 0.5f + (cx - px);
         var desktopY = (ch - ph) * 0.5f + (cy - py);
-        var localX = desktopX / parent.width;
-        var localY = -desktopY / parent.height;
-        var localZ = dz * (window.zOrder - window.parentWindow.zOrder) / transform.localScale.z;
+        var localX = pw != 0 ? desktopX / pw : 0f;
+        var localY = ph != 0 ? -desktopY / ph : 0f;
+
+        var scaleZ = transform.localScale.z;
+        var localZ = scaleZ != 0f ? dz * (childZ - parentZ) / scaleZ : 0f;
         child.transform.localPosition = new Vector3(localX, localY, localZ);
 
-        var widthRatio = 1f * window.width / window.parentWindow.width;
-        var heightRatio = 1f * window.height / window.parentWindow.height;
+        var widthRatio = pw != 0 ? (float)cw / pw : 0f;
+        var heightRatio = ph != 0 ? (float)ch / ph : 0f;
         child.transform.localScale = new Vector3(widthRatio, heightRatio, 1f);
     }
 
