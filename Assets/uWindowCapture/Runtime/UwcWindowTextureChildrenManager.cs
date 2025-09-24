@@ -1,14 +1,27 @@
 ﻿using UnityEngine;
+using UnityEngine.Events;
 using System.Collections.Generic;
 
 namespace uWindowCapture
 {
 
 [RequireComponent(typeof(UwcWindowTexture))]
-public class UwcWindowTextureChildrenManager : MonoBehaviour 
+public class UwcWindowTextureChildrenManager : MonoBehaviour
 {
+    class ChildWindowEntry
+    {
+        public UwcWindow window;
+        public UwcWindowTexture texture;
+        public UnityAction markDirty;
+    }
+
     UwcWindowTexture windowTexture_;
-    Dictionary<int, UwcWindowTexture> children_ = new Dictionary<int, UwcWindowTexture>();
+    Dictionary<int, ChildWindowEntry> children_ = new Dictionary<int, ChildWindowEntry>();
+    HashSet<int> dirtyChildren_ = new HashSet<int>();
+    List<int> dirtyChildrenBuffer_ = new List<int>();
+    bool parentMetricsDirty_ = true;
+    UnityAction parentCapturedListener_;
+    UnityAction parentSizeChangedListener_;
 
     void Awake()
     {
@@ -39,23 +52,48 @@ public class UwcWindowTextureChildrenManager : MonoBehaviour
             oldWindow.onChildAdded.RemoveListener(OnChildAdded);
             oldWindow.onChildRemoved.RemoveListener(OnChildRemoved);
 
+            if (parentCapturedListener_ != null) {
+                oldWindow.onCaptured.RemoveListener(parentCapturedListener_);
+            }
+            if (parentSizeChangedListener_ != null) {
+                oldWindow.onSizeChanged.RemoveListener(parentSizeChangedListener_);
+            }
+            parentCapturedListener_ = null;
+            parentSizeChangedListener_ = null;
+
             foreach (var kv in children_) {
-                var windowTexture = kv.Value;
-                Destroy(windowTexture.gameObject);
+                var entry = kv.Value;
+                if (entry.window != null && entry.markDirty != null) {
+                    entry.window.onCaptured.RemoveListener(entry.markDirty);
+                    entry.window.onSizeChanged.RemoveListener(entry.markDirty);
+                }
+
+                var windowTexture = entry.texture;
+                if (windowTexture) {
+                    Destroy(windowTexture.gameObject);
+                }
             }
 
             children_.Clear();
+            dirtyChildren_.Clear();
         }
 
         if (newWindow != null) {
             newWindow.onChildAdded.AddListener(OnChildAdded);
             newWindow.onChildRemoved.AddListener(OnChildRemoved);
 
+            parentCapturedListener_ = MarkParentDirty;
+            parentSizeChangedListener_ = MarkParentDirty;
+            newWindow.onCaptured.AddListener(parentCapturedListener_);
+            newWindow.onSizeChanged.AddListener(parentSizeChangedListener_);
+            MarkParentDirty();
+
             foreach (var pair in UwcManager.windows) {
                 var window = pair.Value;
                 if (
                     !window.isAltTabWindow &&
-                    window.isChild && 
+                    window.isChild &&
+                    window.parentWindow != null &&
                     window.parentWindow.id == newWindow.id) {
                     OnChildAdded(window);
                 }
@@ -78,7 +116,17 @@ public class UwcWindowTextureChildrenManager : MonoBehaviour
         childWindowTexture.captureRequestTiming = windowTexture_.captureRequestTiming;
         childWindowTexture.drawCursor = windowTexture_.drawCursor;
 
-        children_.Add(window.id, childWindowTexture);
+        var entry = new ChildWindowEntry {
+            window = window,
+            texture = childWindowTexture,
+        };
+        UnityAction markDirty = () => MarkChildDirty(window.id);
+        entry.markDirty = markDirty;
+        window.onCaptured.AddListener(markDirty);
+        window.onSizeChanged.AddListener(markDirty);
+
+        children_[window.id] = entry;
+        MarkChildDirty(window.id);
     }
 
     void OnChildRemoved(UwcWindow window)
@@ -88,11 +136,20 @@ public class UwcWindowTextureChildrenManager : MonoBehaviour
 
     void OnChildRemoved(int id)
     {
-        UwcWindowTexture child;
-        children_.TryGetValue(id, out child);
-        if (child) {
-            Destroy(child.gameObject);
+        ChildWindowEntry entry;
+        children_.TryGetValue(id, out entry);
+        if (entry != null) {
+            if (entry.window != null && entry.markDirty != null) {
+                entry.window.onCaptured.RemoveListener(entry.markDirty);
+                entry.window.onSizeChanged.RemoveListener(entry.markDirty);
+            }
+
+            if (entry.texture) {
+                Destroy(entry.texture.gameObject);
+            }
+
             children_.Remove(id);
+            dirtyChildren_.Remove(id);
         }
     }
 
@@ -130,9 +187,48 @@ public class UwcWindowTextureChildrenManager : MonoBehaviour
 
     void UpdateChildren()
     {
-        foreach (var kv in children_) {
-            MoveAndScaleChildWindow(kv.Value);
+        if (parentMetricsDirty_) {
+            MarkAllChildrenDirty();
+            parentMetricsDirty_ = false;
         }
+
+        if (dirtyChildren_.Count == 0) {
+            return;
+        }
+
+        dirtyChildrenBuffer_.Clear();
+        dirtyChildrenBuffer_.AddRange(dirtyChildren_);
+        dirtyChildren_.Clear();
+
+        for (int i = 0; i < dirtyChildrenBuffer_.Count; ++i) {
+            var id = dirtyChildrenBuffer_[i];
+            ChildWindowEntry entry;
+            if (!children_.TryGetValue(id, out entry) || entry == null) {
+                continue;
+            }
+
+            var child = entry.texture;
+            if (child) {
+                MoveAndScaleChildWindow(child);
+            }
+        }
+    }
+
+    void MarkChildDirty(int id)
+    {
+        dirtyChildren_.Add(id);
+    }
+
+    void MarkAllChildrenDirty()
+    {
+        foreach (var key in children_.Keys) {
+            dirtyChildren_.Add(key);
+        }
+    }
+
+    void MarkParentDirty()
+    {
+        parentMetricsDirty_ = true;
     }
 }
 

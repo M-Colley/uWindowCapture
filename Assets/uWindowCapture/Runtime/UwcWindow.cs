@@ -156,9 +156,32 @@ public class UwcWindow
         get { return Lib.IsWindowBackground(id); }
     }
 
+    string cachedTitle_ = string.Empty;
+    bool hasCachedTitle_ = false;
+    bool isTitleRefreshQueued_ = false;
+    int titleRefreshQueuedFrame_ = -1;
+
     public string title
     {
-        get { return Lib.GetWindowTitle(id); } 
+        get
+        {
+            if (!hasCachedTitle_) {
+                cachedTitle_ = Lib.GetWindowTitle(id) ?? string.Empty;
+                hasCachedTitle_ = true;
+                isTitleRefreshQueued_ = false;
+                titleRefreshQueuedFrame_ = -1;
+            } else if (isTitleRefreshQueued_) {
+                if (Time.frameCount <= titleRefreshQueuedFrame_) {
+                    return cachedTitle_;
+                }
+
+                cachedTitle_ = Lib.GetWindowTitle(id) ?? string.Empty;
+                isTitleRefreshQueued_ = false;
+                titleRefreshQueuedFrame_ = -1;
+            }
+
+            return cachedTitle_;
+        }
     }
 
     public string className
@@ -307,6 +330,8 @@ public class UwcWindow
     public void RequestUpdateTitle()
     {
         Lib.RequestUpdateWindowTitle(id);
+        isTitleRefreshQueued_ = true;
+        titleRefreshQueuedFrame_ = Time.frameCount;
     }
 
     public void RequestCaptureIcon()

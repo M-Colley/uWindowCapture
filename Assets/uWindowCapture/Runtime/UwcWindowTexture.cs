@@ -134,6 +134,8 @@ public class UwcWindowTexture : MonoBehaviour
     public int captureFrameRate = 30;
     public bool drawCursor = true;
     public bool updateTitle = true;
+    [Min(0f)]
+    public float titleUpdateInterval = 0.5f;
     public bool searchAnotherWindowWhenInvalid = false;
 
     public WindowTextureScaleControlType scaleControlType = WindowTextureScaleControlType.BaseScale;
@@ -172,6 +174,7 @@ public class UwcWindowTexture : MonoBehaviour
                 shouldUpdateWindow = false;
                 window_.onCaptured.AddListener(OnCaptured);
                 window_.RequestCapture(CapturePriority.High);
+                ScheduleImmediateTitleUpdate();
             }
         }
     }
@@ -210,6 +213,7 @@ public class UwcWindowTexture : MonoBehaviour
     float captureTimer_ = 0f;
     bool isCaptureRequested_ = false;
     bool hasBeenCaptured_ = false;
+    float nextTitleRequestTime_ = 0f;
 
     void Awake()
     {
@@ -353,8 +357,18 @@ public class UwcWindowTexture : MonoBehaviour
 
     void UpdateTitle()
     {
-        if (updateTitle && isValid) {
+        if (!updateTitle || !isValid) {
+            return;
+        }
+
+        if (titleUpdateInterval <= 0f) {
             window.RequestUpdateTitle();
+            return;
+        }
+
+        if (Time.unscaledTime >= nextTitleRequestTime_) {
+            window.RequestUpdateTitle();
+            nextTitleRequestTime_ = Time.unscaledTime + titleUpdateInterval;
         }
     }
 
@@ -419,6 +433,11 @@ public class UwcWindowTexture : MonoBehaviour
     void OnCaptured()
     {
         hasBeenCaptured_ = true;
+    }
+
+    void ScheduleImmediateTitleUpdate()
+    {
+        nextTitleRequestTime_ = Time.unscaledTime;
     }
 
     public void RequestCapture()
