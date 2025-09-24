@@ -31,3 +31,8 @@ How to use
 
 Check out the following article (written in Japanese, so please use a translation service).
 - https://tips.hecomi.com/entry/2018/08/26/231618
+
+Known limitations
+-----------------
+
+- HDRP projects currently require running the Unity Editor and Player in Direct3D 11 mode. Direct3D 12 causes the native plugin to crash when entering Play mode, so disable DX12 in **Player Settings ▸ Graphics APIs for Windows** until native DX12 support is implemented.
