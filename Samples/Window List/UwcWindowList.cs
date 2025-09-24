@@ -45,6 +45,8 @@ public class UwcWindowList : MonoBehaviour
             listItem.RemoveWindow();
             Destroy(listItem.gameObject);
         }
+
+        items_.Remove(window.id);
     }
 }
 

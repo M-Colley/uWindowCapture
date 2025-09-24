@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
 #pragma warning disable 114, 465
@@ -69,6 +70,8 @@ public static class Lib
 {
     public const string name = "uWindowCapture";
     static readonly int messageSize = Marshal.SizeOf(typeof(Message));
+    static readonly Message[] emptyMessages = new Message[0];
+    static readonly List<Message> sharedMessages = new List<Message>(16);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate void DebugLogDelegate(string str);
@@ -230,25 +233,51 @@ public static class Lib
     [DllImport(name, EntryPoint = "UwcIsWindowsGraphicsCaptureCursorCaptureEnabledApiSupported")]
     public static extern bool IsWindowsGraphicsCaptureCursorCaptureEnabledApiSupported();
 
-    public static Message[] GetMessages()
+    public static void GetMessages(List<Message> buffer)
     {
+        if (buffer == null) {
+            throw new ArgumentNullException("buffer");
+        }
+
+        buffer.Clear();
         ExcludeRemovedWindowEvents();
 
         var count = GetMessageCount();
-        var messages = new Message[count];
+        if (count == 0) {
+            ClearMessages();
+            return;
+        }
 
-        if (count == 0) return messages;
+        if (buffer.Capacity < count) {
+            buffer.Capacity = count;
+        }
 
         var ptr = GetMessages_Internal();
         var size = messageSize;
 
         for (int i = 0; i < count; ++i) {
             var data = new IntPtr(ptr.ToInt64() + (size * i));
-            messages[i] = (Message)Marshal.PtrToStructure(data, typeof(Message));
+#if UNITY_2018_1_OR_NEWER || NET_4_6
+            buffer.Add(Marshal.PtrToStructure<Message>(data));
+#else
+            buffer.Add((Message)Marshal.PtrToStructure(data, typeof(Message)));
+#endif
         }
 
         ClearMessages();
+    }
 
+    [Obsolete("Use GetMessages(List<Message>) to avoid per-frame allocations.")]
+    public static Message[] GetMessages()
+    {
+        sharedMessages.Clear();
+        GetMessages(sharedMessages);
+        if (sharedMessages.Count == 0) {
+            return emptyMessages;
+        }
+
+        var messages = new Message[sharedMessages.Count];
+        sharedMessages.CopyTo(messages);
         return messages;
     }
 
