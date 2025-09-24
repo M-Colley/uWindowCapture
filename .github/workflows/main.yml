@@ -1,5 +1,4 @@
-# A more descriptive name for the workflow's purpose
-name: Publish to GitHub Packages and Create UPM Branch
+name: Create Release and Publish Package
 
 on:
   # 1. Trigger when a new tag starting with 'v' is pushed (e.g., v1.2.0)
@@ -10,17 +9,17 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'The version to publish (e.g., 1.2.0)'
+        description: 'The version to publish and release (e.g., 1.2.0)'
         required: true
         type: string
 
 jobs:
-  # The job name is updated for clarity
-  publish:
+  release-and-publish:
     runs-on: ubuntu-latest
-    # This is CRUCIAL for authenticating to GitHub Packages
     permissions:
+      # Required for pushing the UPM branch AND creating the GitHub Release
       contents: write
+      # Required for publishing the package to the GitHub Packages registry
       packages: write
 
     steps:
@@ -28,7 +27,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
         with:
-          # Fetches all history for all branches and tags, necessary for UPM branch creation
+          # Fetches all history, which is needed for the UPM branch action
           fetch-depth: 0
 
       # Step 2: Determine the version number from the trigger (tag or manual input)
@@ -36,35 +35,44 @@ jobs:
         id: get_version
         run: |
           if [[ "${{ github.event_name }}" == "push" ]]; then
-            # For tag pushes, extract version from 'refs/tags/v1.2.0' -> '1.2.0'
             echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
           else
-            # For manual dispatch, use the version provided in the input
             echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
           fi
 
-      # Step 3: Create a dedicated branch for Unity Package Manager (UPM) consumption
+      # Step 3: Create the dedicated branch for Unity Package Manager (UPM)
       - name: Create UPM Branch
         uses: hecomi/create-upm-branch-action@main
         with:
-          # Use the version determined in the previous step
           git-tag: ${{ steps.get_version.outputs.version }}
           pkg-root-dir-path: Assets/uWindowCapture
           main-branch: master
 
-      # Step 4: Set up the Node.js environment for publishing
+      # Step 4: Set up Node.js environment for publishing to GitHub Packages
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          # This URL points to the GitHub Packages registry
           registry-url: 'https://npm.pkg.github.com'
-          # Associates the scope of your package (@M-Colley) with the registry
-          scope: '@@m-colley'
+          scope: '@m-colley'
 
       # Step 5: Publish the package to GitHub Packages
       - name: Publish to GitHub Packages
-        # The `--access public` flag is not needed for GitHub Packages
         run: npm publish
         env:
-          # Use the built-in GITHUB_TOKEN for authentication. No need for NPM_TOKEN secret.
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Step 6: Create the formal GitHub Release
+      - name: Create GitHub Release
+        id: create_release
+        uses: elgohr/Github-Release-Action@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.get_version.outputs.version }}
+          release_name: Release v${{ steps.get_version.outputs.version }}
+          body: |
+            Official release and package publication for version ${{ steps.get_version.outputs.version }}.
+            
+            The npm package has been published to the GitHub Packages registry.
+          draft: false
+          prerelease: false
