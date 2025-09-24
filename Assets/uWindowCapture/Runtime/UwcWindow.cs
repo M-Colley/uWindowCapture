@@ -244,6 +244,8 @@ public class UwcWindow
         private set;
     }
 
+    private static Texture2D defaultErrorIconTexture_;
+    private static bool loggedMissingDefaultIcon_ = false;
     private Texture2D iconTexture_;
     private Texture2D errorIconTexture_;
     private bool hasIconTextureCaptured_ = false;
@@ -387,7 +389,19 @@ public class UwcWindow
         iconTexture_.filterMode = FilterMode.Bilinear;
         iconTexture_.wrapMode = TextureWrapMode.Clamp;
         Lib.SetWindowIconTexturePtr(id, iconTexture_.GetNativeTexturePtr());
-        errorIconTexture_ = Resources.Load<Texture2D>("uWindowCapture/Textures/uWC_No_Image");
+        errorIconTexture_ = GetDefaultErrorIconTexture();
+    }
+
+    private static Texture2D GetDefaultErrorIconTexture()
+    {
+        if (!defaultErrorIconTexture_) {
+            defaultErrorIconTexture_ = Resources.Load<Texture2D>("uWindowCapture/Textures/uWC_No_Image");
+            if (!defaultErrorIconTexture_ && !loggedMissingDefaultIcon_) {
+                Debug.LogWarning("uWindowCapture: Failed to load fallback icon texture at Resources/uWindowCapture/Textures/uWC_No_Image.");
+                loggedMissingDefaultIcon_ = true;
+            }
+        }
+        return defaultErrorIconTexture_;
     }
 
     public Color32[] GetPixels(int x, int y, int width, int height)

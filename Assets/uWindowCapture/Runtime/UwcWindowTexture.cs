@@ -257,6 +257,10 @@ public class UwcWindowTexture : MonoBehaviour
         if (!isValid) {
             material_.mainTexture = null;
             hasLastCursorDrawValue_ = false;
+            if (searchAnotherWindowWhenInvalid) {
+                shouldUpdateWindow = true;
+            }
+            UpdateBasicComponents();
             return;
         }
 
