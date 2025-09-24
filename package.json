@@ -1,6 +1,6 @@
 {
     "name": "@m-colley/uwindowcapture",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "displayName": "uWindowCapture",
     "description": "This allows you to use Windows Graphics Capture / PrintWindow / BitBlt in Windows to capture multiple windows individually and easily use them as Texture2D in Unity.",
     "license": "MIT License",
