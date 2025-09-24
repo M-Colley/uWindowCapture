@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     # This is CRUCIAL for authenticating to GitHub Packages
     permissions:
-      contents: read
+      contents: write
       packages: write
 
     steps:
