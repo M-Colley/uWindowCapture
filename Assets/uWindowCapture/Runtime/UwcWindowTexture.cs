@@ -251,6 +251,19 @@ public class UwcWindowTexture : MonoBehaviour
 
     void OnDestroy()
     {
+        if (window_ != null) {
+            window_.onCaptured.RemoveListener(OnCaptured);
+        }
+
+        if (material_) {
+            if (Application.isPlaying) {
+                Destroy(material_);
+            } else {
+                DestroyImmediate(material_);
+            }
+            material_ = null;
+        }
+
         list_.Remove(this);
     }
 
@@ -380,15 +393,24 @@ public class UwcWindowTexture : MonoBehaviour
         if (captureFrameRate < 0) {
             captureTimer_ = 0f;
             isCaptureRequested_ = true;
-        } else { 
-            captureTimer_ += Time.deltaTime;
+            return;
+        }
 
-            float T = 1f / captureFrameRate;
-            if (captureTimer_ < T) return;
+        if (captureFrameRate == 0) {
+            captureTimer_ = 0f;
+            isCaptureRequested_ = false;
+            return;
+        }
 
-            while (captureTimer_  > T) {
-                captureTimer_ -= T;
-            }
+        captureTimer_ += Time.deltaTime;
+
+        float T = 1f / captureFrameRate;
+        if (captureTimer_ < T) {
+            return;
+        }
+
+        while (captureTimer_ > T) {
+            captureTimer_ -= T;
         }
 
         isCaptureRequested_ = true;
