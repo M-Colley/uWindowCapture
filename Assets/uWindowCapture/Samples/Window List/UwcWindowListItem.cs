@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.UI;
 
 namespace uWindowCapture
@@ -7,16 +7,16 @@ namespace uWindowCapture
 [RequireComponent(typeof(Image))]
 public class UwcWindowListItem : MonoBehaviour 
 {
-    Image image_;
-    [SerializeField] Color selected;
-    [SerializeField] Color notSelected;
+    public Image image_;
+    [SerializeField] public Color selected;
+    [SerializeField] public Color notSelected;
 
     public UwcWindow window { get; set; }
     public UwcWindowList list { get; set; }
     public UwcWindowTexture windowTexture { get; set; }
     
     [SerializeField] RawImage icon;
-    [SerializeField] Text title;
+    [SerializeField] public Text title;
     [SerializeField] Text x;
     [SerializeField] Text y;
     [SerializeField] Text z;
@@ -58,10 +58,13 @@ public class UwcWindowListItem : MonoBehaviour
 
     public void OnClick()
     {
+            if (title.text.ToLower().Replace("-", "").Replace("_","").Contains("vipsim")) { return; }
         if (windowTexture == null) {
+            list.DisableAllWindows();
             AddWindow();
+            FindAnyObjectByType<FirestoreRESTManager>().OnProgramClick(title.text);
         } else {
-            RemoveWindow();
+            //RemoveWindow();
         }
     }
 
