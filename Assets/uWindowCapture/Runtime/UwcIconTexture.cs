@@ -7,6 +7,8 @@ namespace uWindowCapture
 public class UwcIconTexture : MonoBehaviour
 {
     [SerializeField] UwcWindowTexture windowTexture_;
+    Renderer renderer_;
+    Material material_;
     public UwcWindowTexture windowTexture
     {
         get
@@ -31,6 +33,14 @@ public class UwcIconTexture : MonoBehaviour
         }
         set
         {
+            if (window_ == value) {
+                return;
+            }
+
+            if (window_ != null) {
+                window_.onIconCaptured.RemoveListener(OnIconCaptured);
+            }
+
             window_ = value;
 
             if (window_ != null) {
@@ -52,6 +62,12 @@ public class UwcIconTexture : MonoBehaviour
         }
     }
 
+    void Awake()
+    {
+        renderer_ = GetComponent<Renderer>();
+        material_ = renderer_.material; // clone
+    }
+
     void Update()
     {
         if (windowTexture != null) {
@@ -65,9 +81,24 @@ public class UwcIconTexture : MonoBehaviour
     {
         if (!isValid) return;
 
-        var renderer = GetComponent<Renderer>();
-        renderer.material.mainTexture = window.iconTexture;
+        material_.mainTexture = window.iconTexture;
         window.onIconCaptured.RemoveListener(OnIconCaptured);
+    }
+
+    void OnDestroy()
+    {
+        if (window_ != null) {
+            window_.onIconCaptured.RemoveListener(OnIconCaptured);
+        }
+
+        if (material_) {
+            if (Application.isPlaying) {
+                Destroy(material_);
+            } else {
+                DestroyImmediate(material_);
+            }
+            material_ = null;
+        }
     }
 }
 

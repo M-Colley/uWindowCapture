@@ -4,32 +4,55 @@ namespace uWindowCapture
 {
 
 [RequireComponent(typeof(Renderer))]
-public class UwcCursorTexture : MonoBehaviour 
+public class UwcCursorTexture : MonoBehaviour
 {
     Renderer renderer_;
     Material material_;
-
-    UwcCursor cursor
-    {
-        get { return UwcManager.cursor; }
-    }
+    UwcCursor cursor_;
 
     void Awake()
     {
         renderer_ = GetComponent<Renderer>();
         material_ = renderer_.material; // clone
-        cursor.onTextureChanged.AddListener(OnTextureChanged);
+        cursor_ = UwcManager.cursor;
+        if (cursor_ != null) {
+            cursor_.onTextureChanged.AddListener(OnTextureChanged);
+        }
     }
 
     void Update()
     {
-        cursor.CreateTextureIfNeeded();
-        cursor.RequestCapture();
+        if (cursor_ == null) {
+            return;
+        }
+
+        cursor_.CreateTextureIfNeeded();
+        cursor_.RequestCapture();
     }
 
     void OnTextureChanged()
     {
-        material_.mainTexture = cursor.texture;
+        if (cursor_ == null) {
+            return;
+        }
+
+        material_.mainTexture = cursor_.texture;
+    }
+
+    void OnDestroy()
+    {
+        if (cursor_ != null) {
+            cursor_.onTextureChanged.RemoveListener(OnTextureChanged);
+        }
+
+        if (material_) {
+            if (Application.isPlaying) {
+                Destroy(material_);
+            } else {
+                DestroyImmediate(material_);
+            }
+            material_ = null;
+        }
     }
 }
 
