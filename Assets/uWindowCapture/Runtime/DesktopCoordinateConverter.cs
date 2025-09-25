@@ -59,9 +59,20 @@ namespace uWindowCapture
             DesktopScreenMetrics screen,
             float basePixel)
         {
-            if (Math.Abs(basePixel) < float.Epsilon)
+            if (!float.IsFinite(basePixel))
             {
-                throw new ArgumentException("basePixel must not be zero.", nameof(basePixel));
+                throw new ArgumentOutOfRangeException(
+                    nameof(basePixel),
+                    basePixel,
+                    "basePixel must be a finite, positive value.");
+            }
+
+            if (basePixel <= 0f)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(basePixel),
+                    basePixel,
+                    "basePixel must be a finite, positive value.");
             }
 
             var unityX = (window.CenterX - screen.CenterX) / basePixel;

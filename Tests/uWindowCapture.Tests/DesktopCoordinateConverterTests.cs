@@ -1,3 +1,4 @@
+using System;
 using NUnit.Framework;
 
 namespace uWindowCapture.Tests;
@@ -65,13 +66,35 @@ public class DesktopCoordinateConverterTests
     }
 
     [Test]
-    public void ConvertToUnityCoordinates_ZeroBasePixel_ThrowsArgumentException()
+    public void ConvertToUnityCoordinates_ZeroBasePixel_ThrowsArgumentOutOfRangeException()
     {
         var window = new DesktopWindowRectangle(0, 0, 100, 100);
         var screen = new DesktopScreenMetrics(0, 0, 200, 200);
 
         Assert.That(
             () => DesktopCoordinateConverter.ConvertToUnityCoordinates(window, screen, 0f),
-            Throws.ArgumentException.With.Message.Contains("basePixel"));
+            Throws.InstanceOf<ArgumentOutOfRangeException>().With.Message.Contains("basePixel"));
+    }
+
+    [Test]
+    public void ConvertToUnityCoordinates_NegativeBasePixel_ThrowsArgumentOutOfRangeException()
+    {
+        var window = new DesktopWindowRectangle(0, 0, 100, 100);
+        var screen = new DesktopScreenMetrics(0, 0, 200, 200);
+
+        Assert.That(
+            () => DesktopCoordinateConverter.ConvertToUnityCoordinates(window, screen, -1f),
+            Throws.InstanceOf<ArgumentOutOfRangeException>().With.Message.Contains("basePixel"));
+    }
+
+    [Test]
+    public void ConvertToUnityCoordinates_NonFiniteBasePixel_ThrowsArgumentOutOfRangeException()
+    {
+        var window = new DesktopWindowRectangle(0, 0, 100, 100);
+        var screen = new DesktopScreenMetrics(0, 0, 200, 200);
+
+        Assert.That(
+            () => DesktopCoordinateConverter.ConvertToUnityCoordinates(window, screen, float.PositiveInfinity),
+            Throws.InstanceOf<ArgumentOutOfRangeException>().With.Message.Contains("basePixel"));
     }
 }
