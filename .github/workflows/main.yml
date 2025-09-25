@@ -30,6 +30,14 @@ jobs:
           # Fetches all history, which is needed for the UPM branch action
           fetch-depth: 0
 
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Run unit tests
+        run: dotnet test Tests/uWindowCapture.Tests/uWindowCapture.Tests.csproj --configuration Release
+
       # Step 2: Determine the version number from the trigger (tag or manual input)
       - name: Get Version
         id: get_version
